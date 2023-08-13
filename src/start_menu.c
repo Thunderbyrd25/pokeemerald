@@ -46,6 +46,7 @@
 #include "constants/battle_frontier.h"
 #include "constants/rgb.h"
 #include "constants/songs.h"
+#include "region_map.h"
 
 // Menu actions
 enum
@@ -62,7 +63,9 @@ enum
     MENU_ACTION_PLAYER_LINK,
     MENU_ACTION_REST_FRONTIER,
     MENU_ACTION_RETIRE_FRONTIER,
-    MENU_ACTION_PYRAMID_BAG
+    MENU_ACTION_PYRAMID_BAG,
+    MENU_ACTION_MAP,
+    MENU_ACTION_FLY
 };
 
 // Save status
@@ -103,6 +106,8 @@ static bool8 StartMenuSafariZoneRetireCallback(void);
 static bool8 StartMenuLinkModePlayerNameCallback(void);
 static bool8 StartMenuBattlePyramidRetireCallback(void);
 static bool8 StartMenuBattlePyramidBagCallback(void);
+static bool8 StartMenuMapCallback(void);
+static bool8 StartMenuFlyCallback(void);
 
 // Menu callbacks
 static bool8 SaveStartCallback(void);
@@ -193,7 +198,9 @@ static const struct MenuAction sStartMenuItems[] =
     [MENU_ACTION_PLAYER_LINK]     = {gText_MenuPlayer,  {.u8_void = StartMenuLinkModePlayerNameCallback}},
     [MENU_ACTION_REST_FRONTIER]   = {gText_MenuRest,    {.u8_void = StartMenuSaveCallback}},
     [MENU_ACTION_RETIRE_FRONTIER] = {gText_MenuRetire,  {.u8_void = StartMenuBattlePyramidRetireCallback}},
-    [MENU_ACTION_PYRAMID_BAG]     = {gText_MenuBag,     {.u8_void = StartMenuBattlePyramidBagCallback}}
+    [MENU_ACTION_PYRAMID_BAG]     = {gText_MenuBag,     {.u8_void = StartMenuBattlePyramidBagCallback}},
+    [MENU_ACTION_MAP]             = {gText_MenuMap,     {.u8_void = StartMenuMapCallback}},
+    [MENU_ACTION_FLY]             = {gText_MenuFly,     {.u8_void = StartMenuFlyCallback}}
 };
 
 static const struct BgTemplate sBgTemplates_LinkBattleSave[] =
@@ -328,6 +335,15 @@ static void BuildNormalStartMenu(void)
     if (FlagGet(FLAG_SYS_POKENAV_GET) == TRUE)
     {
         AddStartMenuAction(MENU_ACTION_POKENAV);
+    }
+
+    if (FlagGet(FLAG_SYS_FLY_GET) == TRUE)
+    {
+        AddStartMenuAction(MENU_ACTION_FLY);
+    } 
+    else if (FlagGet(FLAG_SYS_MAP_GET) == TRUE)    
+    {
+        AddStartMenuAction(MENU_ACTION_MAP);
     }
 
     AddStartMenuAction(MENU_ACTION_PLAYER);
@@ -613,6 +629,15 @@ static bool8 HandleStartMenuInput(void)
                 return FALSE;
         }
 
+        if (sCurrentStartMenuActions[sStartMenuCursorPos] == MENU_ACTION_FLY 
+            && Overworld_MapTypeAllowsTeleportAndFly(gMapHeader.mapType) == FALSE)
+        {
+            RemoveExtraStartMenuWindows();
+            HideStartMenu();
+            ScriptContext_SetupScript(EventScript_FlyMenuError);
+            return TRUE;
+        }
+
         gMenuCallback = sStartMenuItems[sCurrentStartMenuActions[sStartMenuCursorPos]].func.u8_void;
 
         if (gMenuCallback != StartMenuSaveCallback
@@ -750,6 +775,36 @@ static bool8 StartMenuExitCallback(void)
     HideStartMenu(); // Hide start menu
 
     return TRUE;
+}
+
+bool8 StartMenuMapCallback(void)
+{
+    const struct MapHeader *mapHeader;
+    if (!gPaletteFade.active)
+    {
+        PlayRainStoppingSoundEffect();
+        RemoveExtraStartMenuWindows();
+        CleanupOverworldWindowsAndTilemaps();
+        SetMainCallback2(CB2_FieldShowRegionMap);
+        FlagSet(FLAG_SYS_MAP_MENU_USED);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+bool8 StartMenuFlyCallback(void)
+{
+    if (!gPaletteFade.active)
+    {
+        const struct MapHeader *mapHeader;
+        PlayRainStoppingSoundEffect();
+        RemoveExtraStartMenuWindows();
+        CleanupOverworldWindowsAndTilemaps();
+        SetMainCallback2(CB2_OpenFlyMap);
+        FlagSet(FLAG_SYS_MAP_MENU_USED);
+        return TRUE;
+    }
+    return FALSE;
 }
 
 static bool8 StartMenuSafariZoneRetireCallback(void)

@@ -965,9 +965,17 @@ u8 GetLeadMonFriendshipScore(void)
     return FRIENDSHIP_NONE;
 }
 
-static void CB2_FieldShowRegionMap(void)
+void CB2_FieldShowRegionMap(void)
 {
-    FieldInitRegionMap(CB2_ReturnToFieldContinueScriptPlayMapMusic);
+    if (FlagGet(FLAG_SYS_MAP_MENU_USED)) 
+    {
+        FieldInitRegionMap(CB2_ReturnToFieldWithOpenMenu);
+    }
+    else
+    {
+        FieldInitRegionMap(CB2_ReturnToFieldContinueScriptPlayMapMusic);
+    }
+    FlagClear(FLAG_SYS_MAP_MENU_USED);
 }
 
 void FieldShowRegionMap(void)

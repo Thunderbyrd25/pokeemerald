@@ -1,5 +1,6 @@
 #include "global.h"
 #include "decompress.h"
+#include "event_data.h"
 #include "event_object_movement.h"
 #include "field_camera.h"
 #include "field_control_avatar.h"
@@ -18,7 +19,9 @@
 #include "overworld.h"
 #include "palette.h"
 #include "party_menu.h"
+#include "pokedex.h"
 #include "pokemon.h"
+#include "random.h"
 #include "script.h"
 #include "sound.h"
 #include "sprite.h"
@@ -2577,14 +2580,55 @@ bool8 FldEff_FieldMoveShowMon(void)
 
 #define SHOW_MON_CRY_NO_DUCKING (1 << 31)
 
+//Generates a random pokemon to show during the fly animation if player uses fly from start menu
+u16 GenerateRandomFlyMon() 
+{
+    u16 flyMon;
+
+    u16 randomFlyMonHoenn[] = {
+        SPECIES_CROBAT, SPECIES_XATU, SPECIES_SKARMORY, SPECIES_TAILLOW, SPECIES_SWELLOW, SPECIES_WINGULL,
+        SPECIES_PELIPPER, SPECIES_VIBRAVA, SPECIES_FLYGON, SPECIES_SWABLU, SPECIES_ALTARIA, SPECIES_TROPIUS      
+    };
+
+    u16 randomFlyMonNat[] = {
+        SPECIES_PIDGEY, SPECIES_PIDGEOTTO, SPECIES_PIDGEOT, SPECIES_SPEAROW, SPECIES_FEAROW, SPECIES_HOOTHOOT, SPECIES_NOCTOWL,
+        SPECIES_CROBAT,SPECIES_TOGETIC, SPECIES_XATU, SPECIES_MURKROW, SPECIES_SKARMORY, SPECIES_TAILLOW, SPECIES_SWELLOW, SPECIES_WINGULL,
+        SPECIES_PELIPPER, SPECIES_VIBRAVA, SPECIES_FLYGON, SPECIES_SWABLU, SPECIES_ALTARIA, SPECIES_TROPIUS/*, SPECIES_STARLY, SPECIES_STARAVIA, 
+        SPECIES_STARAPTOR, SPECIES_HONCHKROW, SPECIES_CHATOT, SPECIES_TOGEKISS, SPECIES_PIDOVE,SPECIES_TRANQUILL, SPECIES_UNFEZANT, 
+        SPECIES_DUCKLETT, SPECIES_SWANNA, SPECIES_RUFFLET, SPECIES_BRAVIARY, SPECIES_VULLABY, SPECIES_MANDIBUZZ, SPECIES_FLETCHLING, 
+        SPECIES_FLETCHINDER, SPECIES_TALONFLAME, SPECIES_HAWLUCHA, SPECIES_PIKIPEK, SPECIES_TRUMBEAK, SPECIES_TOUCANNON, SPECIES_ROOKIDEE, 
+        SPECIES_CORVISQUIRE, SPECIES_CORVIKNIGHT, SPECIES_FLAPPLE, SPECIES_CRAMORANT*/
+    };
+
+    if (!IsNationalPokedexEnabled()) 
+    {
+        u16 rand = Random() % ARRAY_COUNT(randomFlyMonHoenn);     
+        flyMon = randomFlyMonHoenn[rand];
+    }
+    else 
+    {
+        u16 rand = Random() % ARRAY_COUNT(randomFlyMonNat);     
+        flyMon = randomFlyMonNat[rand];
+    }
+    return flyMon;
+}
+
 bool8 FldEff_FieldMoveShowMonInit(void)
 {
     struct Pokemon *pokemon;
     bool32 noDucking = gFieldEffectArguments[0] & SHOW_MON_CRY_NO_DUCKING;
     pokemon = &gPlayerParty[(u8)gFieldEffectArguments[0]];
-    gFieldEffectArguments[0] = GetMonData(pokemon, MON_DATA_SPECIES);
-    gFieldEffectArguments[1] = GetMonData(pokemon, MON_DATA_OT_ID);
-    gFieldEffectArguments[2] = GetMonData(pokemon, MON_DATA_PERSONALITY);
+    if (FlagGet(FLAG_SYS_MAP_MENU_USED)) {
+        u16 rolledMon = GenerateRandomFlyMon();
+        GetSetPokedexFlag(SpeciesToNationalPokedexNum(rolledMon), FLAG_SET_SEEN); //Registers the pokemon shown as 'seen' in the pokedex
+        gFieldEffectArguments[0] = rolledMon;
+        gFieldEffectArguments[1] = rolledMon;
+        gFieldEffectArguments[2] = Random32();
+    } else {
+        gFieldEffectArguments[0] = GetMonData(pokemon, MON_DATA_SPECIES);
+        gFieldEffectArguments[1] = GetMonData(pokemon, MON_DATA_OT_ID);
+        gFieldEffectArguments[2] = GetMonData(pokemon, MON_DATA_PERSONALITY);
+    }
     gFieldEffectArguments[0] |= noDucking;
     FieldEffectStart(FLDEFF_FIELD_MOVE_SHOW_MON);
     FieldEffectActiveListRemove(FLDEFF_FIELD_MOVE_SHOW_MON_INIT);
