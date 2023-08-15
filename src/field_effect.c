@@ -13,6 +13,7 @@
 #include "fldeff.h"
 #include "gpu_regs.h"
 #include "main.h"
+#include "malloc.h"
 #include "mirage_tower.h"
 #include "menu.h"
 #include "metatile_behavior.h"
@@ -31,9 +32,11 @@
 #include "util.h"
 #include "constants/field_effects.h"
 #include "constants/event_object_movement.h"
+#include "constants/items.h"
 #include "constants/metatile_behaviors.h"
 #include "constants/rgb.h"
 #include "constants/songs.h"
+#include "constants/tms_hms.h"
 
 #define subsprite_table(ptr) {.subsprites = ptr, .subspriteCount = (sizeof ptr) / (sizeof(struct Subsprite))}
 
@@ -2581,36 +2584,40 @@ bool8 FldEff_FieldMoveShowMon(void)
 #define SHOW_MON_CRY_NO_DUCKING (1 << 31)
 
 //Generates a random pokemon to show during the fly animation if player uses fly from start menu
-u16 GenerateRandomFlyMon() 
+u32 GenerateRandomFlyMon(void)
 {
-    u16 flyMon;
-
-    u16 randomFlyMonHoenn[] = {
-        SPECIES_CROBAT, SPECIES_XATU, SPECIES_SKARMORY, SPECIES_TAILLOW, SPECIES_SWELLOW, SPECIES_WINGULL,
-        SPECIES_PELIPPER, SPECIES_VIBRAVA, SPECIES_FLYGON, SPECIES_SWABLU, SPECIES_ALTARIA, SPECIES_TROPIUS      
-    };
-
-    u16 randomFlyMonNat[] = {
-        SPECIES_PIDGEY, SPECIES_PIDGEOTTO, SPECIES_PIDGEOT, SPECIES_SPEAROW, SPECIES_FEAROW, SPECIES_HOOTHOOT, SPECIES_NOCTOWL,
-        SPECIES_CROBAT,SPECIES_TOGETIC, SPECIES_XATU, SPECIES_MURKROW, SPECIES_SKARMORY, SPECIES_TAILLOW, SPECIES_SWELLOW, SPECIES_WINGULL,
-        SPECIES_PELIPPER, SPECIES_VIBRAVA, SPECIES_FLYGON, SPECIES_SWABLU, SPECIES_ALTARIA, SPECIES_TROPIUS/*, SPECIES_STARLY, SPECIES_STARAVIA, 
-        SPECIES_STARAPTOR, SPECIES_HONCHKROW, SPECIES_CHATOT, SPECIES_TOGEKISS, SPECIES_PIDOVE,SPECIES_TRANQUILL, SPECIES_UNFEZANT, 
-        SPECIES_DUCKLETT, SPECIES_SWANNA, SPECIES_RUFFLET, SPECIES_BRAVIARY, SPECIES_VULLABY, SPECIES_MANDIBUZZ, SPECIES_FLETCHLING, 
-        SPECIES_FLETCHINDER, SPECIES_TALONFLAME, SPECIES_HAWLUCHA, SPECIES_PIKIPEK, SPECIES_TRUMBEAK, SPECIES_TOUCANNON, SPECIES_ROOKIDEE, 
-        SPECIES_CORVISQUIRE, SPECIES_CORVIKNIGHT, SPECIES_FLAPPLE, SPECIES_CRAMORANT*/
-    };
-
-    if (!IsNationalPokedexEnabled()) 
+    u32 i, j, returnSpecies;
+    u32 numberOfMonsLearningFly = 0;
+    u16 *buffer = Alloc(sizeof(u16) * NUM_SPECIES);
+    //By default legendaries and pseudos are excluded, but you may add or remove whatever you'd like from the list.
+    u16 exclusions[] = {SPECIES_ARTICUNO, SPECIES_ZAPDOS, SPECIES_MOLTRES, SPECIES_DRAGONITE, SPECIES_MEW, SPECIES_LUGIA, SPECIES_HO_OH, SPECIES_SALAMENCE, 
+    SPECIES_LATIAS, SPECIES_LATIOS, SPECIES_RAYQUAZA/*, SPECIES_GIRATINA, SPECIES_ARCEUS, SPECIES_HYDREIGON, SPECIES_TORNADUS, SPECIES_THUNDURUS,
+    SPECIES_RESHIRAM, SPECIES_ZEKROM, SPECIES_LANDORUS, SPECIES_KYUREM, SPECIES_GENESECT, SPECIES_YVELTAL, SPECIES_TAPU_KOKO, SPECIES_LUNALA,
+    SPECIES_NAGANADEL, SPECIES_DRAGAPULT, SPECIES_ETERNATUS, SPECIES_ARTICUNO_GALARIAN, SPECIES_ZAPDOS_GALARIAN, SPECIES_MOLTRES_GALARIAN 
+    SPECIES_ENAMORUS*/};
+    u8 exclusionCheck;
+    for (i = 0; i < NUM_SPECIES; ++i)
     {
-        u16 rand = Random() % ARRAY_COUNT(randomFlyMonHoenn);     
-        flyMon = randomFlyMonHoenn[rand];
-    }
-    else 
-    {
-        u16 rand = Random() % ARRAY_COUNT(randomFlyMonNat);     
-        flyMon = randomFlyMonNat[rand];
-    }
-    return flyMon;
+        for (j = 0; j < sizeof(exclusions) + 1; j++) 
+        {
+            if (i == exclusions[j]) 
+                exclusionCheck = 1;
+        }
+        if (exclusionCheck > 0)
+        {
+            exclusionCheck = 0;
+            continue;
+        }
+        if(!VarGet(VAR_NATIONAL_DEX)) {
+            if (!IsSpeciesInHoennDex(i)) continue;
+        }
+        if (!CanSpeciesLearnTMHM(i, TMHM_ID_FLY) ) continue;
+        buffer[numberOfMonsLearningFly] = i;
+        numberOfMonsLearningFly++;
+    }     
+    returnSpecies = buffer[Random() % numberOfMonsLearningFly];
+    Free(buffer);
+    return returnSpecies;
 }
 
 bool8 FldEff_FieldMoveShowMonInit(void)

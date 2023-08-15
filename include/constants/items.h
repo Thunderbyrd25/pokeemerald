@@ -479,4 +479,7 @@
 // Check if the item is one that can be used on a Pokemon.
 #define ITEM_HAS_EFFECT(item) ((item) >= ITEM_POTION && (item) <= MAX_BERRY_INDEX)
 
+// For generating a random flymon
+#define TMHM_ID_FLY (ITEM_HM02 - ITEM_TM01)
+
 #endif  // GUARD_CONSTANTS_ITEMS_H
